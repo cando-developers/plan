@@ -89,7 +89,7 @@
     (cando.serialize:save-cando jobs "data/jobs.cando")))
 
 
-(defun run (team node &key verbose)
+(defun run (team node &key verbose (parallel t))
   (load-rotamers)
   (let* ((print-lock (bordeaux-threads:make-recursive-lock))
          (all-jobs (cando.serialize:load-cando "data/jobs.cando"))
@@ -99,17 +99,19 @@
          (file (pathname (format nil "~a/team-~anode-~a.output" "data" team node))))
     (with-open-file (fout file :direction :output)
       (format fout "(~%")
-      (lparallel:pmapcar (lambda (job)
-                           (let* ((oligomer-index job)
-                                  (solution (do-monte-carlo *olig-space* oligomer-index :verbose verbose)))
-                             (bordeaux-threads:with-recursive-lock-held (print-lock)
-                               (let* ((*print-readably* t) 
-                                      (*print-pretty* nil))
-                                 (format fout "~s~%" solution))
-                               (finish-output fout))))
-                         jobs)
-      (format fout ")~%")))
-  )
+      (flet ((run-one (job)
+               (let* ((oligomer-index (oligomer-index job))
+                      (solution (do-monte-carlo *olig-space* oligomer-index :verbose verbose)))
+                 (bordeaux-threads:with-recursive-lock-held (print-lock)
+                   (let* ((*print-readably* t) 
+                          (*print-pretty* nil))
+                     (format fout "~s~%" solution))
+                   (finish-output fout)))))
+        (if parallel
+            (lparallel:pmapcar #'run-one jobs)
+            (mapcar #'run-one jobs))
+        (format fout ")~%")))
+    ))
 
 (defclass mc-solution (cando.serialize:serializable)
   ((oligomer-index :initarg :oligomer-index :accessor oligomer-index)
@@ -135,22 +137,27 @@
          (best-solution nil))
     (add-restraints-to-energy-function assembler)
     (loop for mc-index below num-mc-runs
-          do (progn
-               (topology:write-rotamers bs (foldamer:random-rotamers bs))
-               (let* ((ss (foldamer:make-sidechain-rotamer-stepper olig-shape))
-                      )
-                 (topology:write-rotamers ss (foldamer:random-rotamers ss))
-                 ;; Is this where I would add the distance restraints between amines?
-                 (macrocycle:mopt-backbone olig-shape assembler coords)
-                 (macrocycle:mopt-sidechain olig-shape assembler coords))
-               (let* ((vec (topology:read-rotamers olig-shape))
-                      (solution (make-instance 'mc-solution
-                                               :oligomer-index oligomer-index
-                                               :score (chem:evaluate-energy energy-function coords)
-                                               :rotamers vec)))
-                 (when (or (null best-solution) (< (score solution) (score best-solution)))
-                   (when verbose (format t "Found a better solution ~s~%" solution))
-                   (setf best-solution solution)))))
+          do (loop
+              (restart-case
+                  (progn
+                    (topology:write-rotamers bs (foldamer:random-rotamers bs))
+                    (let* ((ss (foldamer:make-sidechain-rotamer-stepper olig-shape))
+                           )
+                      (topology:write-rotamers ss (foldamer:random-rotamers ss))
+                      ;; Restart the mopt 
+                      (macrocycle:mopt-backbone olig-shape assembler coords :verbose verbose)
+                      (macrocycle:mopt-sidechain olig-shape assembler coords :verbose verbose))
+                    (return nil))
+                (restart-monte-carlo ()
+                  (format t "WARNING: restart-monte-carlo was invoked~%"))))
+          do (let* ((vec (topology:read-rotamers olig-shape))
+                    (solution (make-instance 'mc-solution
+                                             :oligomer-index oligomer-index
+                                             :score (chem:evaluate-energy energy-function coords)
+                                             :rotamers vec)))
+               (when (or (null best-solution) (< (score solution) (score best-solution)))
+                 (when verbose (format t "Found a better solution ~s~%" solution))
+                 (setf best-solution solution))))
     best-solution
     )
   )
