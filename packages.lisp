@@ -3,4 +3,5 @@
 (defpackage #:metal-binder
   (:use #:common-lisp)
   (:export
+   #:run
    #:command-line-dispatch))

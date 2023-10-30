@@ -83,7 +83,7 @@
     (loop for team below teams
           do (with-open-file (tfout (format nil "team~a.team" team) :direction :output)
                (loop for node below nodes-per-team
-                     do (format tfout "$CLASP -l run.lisp -e \"(run ~a ~a)\"~%" team node))))
+                     do (format tfout "$CLASP -l run.lisp -e \"(metal-binder:run ~a ~a)\"~%" team node))))
     (ensure-directories-exist "data/jobs.cando")
     (cando.serialize:save-cando jobs "data/jobs.cando")))
 
