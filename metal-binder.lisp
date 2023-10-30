@@ -162,19 +162,24 @@
   )
 
 
-(defun analyze ()
+(defun analyze (&key output)
   (let* ((files (directory "data/**.output"))
          (all-data (loop for file in files
                          append (with-open-file (fin file :direction :input)
-                                  (let ((data (read fin)))
-                                    data))))
+                                  (loop for one = (read fin nil :eof)
+                                        unless (eq one :eof)
+                                          collect one into results
+                                        finally (return results)))))
          (sorted (sort all-data #'< :key #'score)))
-    (with-open-file (fout "results.results" :direction :output)
-      (loop for solution in sorted
-            do (let* ((*print-readably* t) 
-                      (*print-pretty* nil))
-                 (format fout "~s~%" solution)))
-      )))
+    (when output
+      (with-open-file (fout output :direction :output)
+        (loop for solution in sorted
+              do (let* ((*print-readably* t) 
+                        (*print-pretty* nil))
+                   (format fout "~s~%" solution)))
+        ))
+    sorted
+    ))
 
 (defun solution-aggregate (solution &key (rotamer-db *rotamer-db*))
   (let* ((olig (topology:make-oligomer *olig-space* (oligomer-index solution)))
