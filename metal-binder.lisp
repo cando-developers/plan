@@ -64,7 +64,7 @@
   )
 
 
-(defun do-setup (&key (teams 1) (nodes-per-team 12) max-sequences verbose)
+(defun setup (&key (teams 1) (nodes-per-team 12) max-sequences verbose)
   (let* ((number-of-sequences (or max-sequences (topology:number-of-sequences *olig-space*)))
          (oligomer-index 0)
          (jobs nil))
