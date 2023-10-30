@@ -2,10 +2,11 @@
 
 (defvar *force-field* (foldamer:load-force-field t))
 
-(let ((rotamers "~/work/spiros/data/rotamers.cando"))
-  (format t "About to load ~s~%" rotamers)
-  (time (defvar *rotamer-db* (cando.serialize:load-cando rotamers)))
-  (format t "Loaded.~%"))
+(defun load-rotamers ()
+  (let ((rotamers "~/work/spiros/data/rotamers.cando"))
+    (format t "About to load ~s~%" rotamers)
+    (time (defvar *rotamer-db* (cando.serialize:load-cando rotamers)))
+    (format t "Loaded.~%")))
 
 (defparameter *olig-space*
   (topology:make-oligomer-space
@@ -89,6 +90,7 @@
 
 
 (defun run (team node &key verbose)
+  (load-rotamers)
   (let* ((print-lock (bordeaux-threads:make-recursive-lock))
          (all-jobs (cando.serialize:load-cando "data/jobs.cando"))
          (jobs (loop for job in all-jobs
