@@ -95,10 +95,9 @@
          (all-jobs (cando.serialize:load-cando "data/jobs.cando"))
          (jobs (loop for job in all-jobs
                      when (and (= (team job) team) (= (node job) node))
-                       collect job))
+                     collect job))
          (file (pathname (format nil "~a/team-~anode-~a.output" "data" team node))))
     (with-open-file (fout file :direction :output)
-      (format fout "(~%")
       (flet ((run-one (job)
                (let* ((oligomer-index (oligomer-index job))
                       (solution (do-monte-carlo *olig-space* oligomer-index :verbose verbose)))
@@ -110,7 +109,7 @@
         (if parallel
             (lparallel:pmapcar #'run-one jobs)
             (mapcar #'run-one jobs))
-        (format fout ")~%")))
+        ))
     ))
 
 (defclass mc-solution (cando.serialize:serializable)
@@ -171,12 +170,10 @@
                                     data))))
          (sorted (sort all-data #'< :key #'score)))
     (with-open-file (fout "results.results" :direction :output)
-      (format fout "(~%")
       (loop for solution in sorted
             do (let* ((*print-readably* t) 
                       (*print-pretty* nil))
                  (format fout "~s~%" solution)))
-      (format fout ")~%")
       )))
 
 (defun solution-aggregate (solution &key (rotamer-db *rotamer-db*))
