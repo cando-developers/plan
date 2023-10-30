@@ -89,20 +89,23 @@
 
 
 (defun run (team node &key verbose)
-  (let* ((all-jobs (cando.serialize:load-cando "data/jobs.cando"))
+  (let* ((print-lock (bordeaux-threads:make-recursive-lock))
+         (all-jobs (cando.serialize:load-cando "data/jobs.cando"))
          (jobs (loop for job in all-jobs
                      when (and (= (team job) team) (= (node job) node))
                        collect job))
          (file (pathname (format nil "~a/team-~anode-~a.output" "data" team node))))
     (with-open-file (fout file :direction :output)
       (format fout "(~%")
-      (loop for job in jobs
-            for oligomer-index = (oligomer-index job)
-            for solution = (do-monte-carlo *olig-space* oligomer-index :verbose verbose)
-            do (let* ((*print-readably* t) 
-                      (*print-pretty* nil))
-                 (format fout "~s~%" solution))
-            do (finish-output fout))
+      (lparallel:pmapcar (lambda (job)
+                           (let* ((oligomer-index job)
+                                  (solution (do-monte-carlo *olig-space* oligomer-index :verbose verbose)))
+                             (bordeaux-threads:with-recursive-lock-held (print-lock)
+                               (let* ((*print-readably* t) 
+                                      (*print-pretty* nil))
+                                 (format fout "~s~%" solution))
+                               (finish-output fout))))
+                         jobs)
       (format fout ")~%")))
   )
 
@@ -118,7 +121,7 @@
         (format stream "oligomer-index ~a score: ~f" (oligomer-index obj) (score obj)))))
 
 (defun do-monte-carlo (oligomer-space oligomer-index
-                       &key (num-mc-runs 100)
+                       &key (num-mc-runs 10)
                          (rotamer-db *rotamer-db*)
                          (verbose nil))
   (let* ((olig (topology:make-oligomer oligomer-space oligomer-index))
@@ -198,7 +201,7 @@
      (format t "args = ~s~%" (loop for ii below (sys:argc) collect (sys:argv ii)))
      (format t "args = ~s~%" args))
     ((string= command "setup")
-     (apply 'do-setup args))
+     (apply 'setup args))
     ((string= command "run")
      (apply 'run args))
     ((string= command "analyze")
