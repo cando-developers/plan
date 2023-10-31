@@ -4,4 +4,7 @@
   (:use #:common-lisp)
   (:export
    #:run
-   #:command-line-dispatch))
+   #:command-line-dispatch
+   #:*olig-space*
+   #:find-atom
+   #:*num-mc-runs*))

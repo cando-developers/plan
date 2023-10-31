@@ -2,68 +2,37 @@
 
 (defvar *force-field* (foldamer:load-force-field t))
 
+(defvar *num-mc-runs* 50)
+
+(defvar *rotamer-db*)
 (defun load-rotamers ()
-  (let ((rotamers "~/work/spiros/data/rotamers.cando"))
-    (format t "About to load ~s~%" rotamers)
-    (time (defvar *rotamer-db* (cando.serialize:load-cando rotamers)))
-    (format t "Loaded.~%")))
+  (unless (boundp '*rotamer-db*)
+    (let ((rotamers "~/work/spiros/data/rotamers.cando"))
+      (format t "About to load ~s~%" rotamers)
+      (time (defvar *rotamer-db* (cando.serialize:load-cando rotamers)))
+      (format t "Loaded.~%")))
+  *rotamer-db*)
 
-(defparameter *olig-space*
-  (topology:make-oligomer-space
-   spiros:*spiros*
-   `((spiros:ring-aminoacid :label :ringc)
-     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:sideamide spiros::sideamide-ace)
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side ((spiros:3pr spiros:4pr) :label :pr1))
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side spiros:bnz)
-     :dkp spiros::ampross
-     :amide spiros::aminoacid
-     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:sideamide spiros:sideamide-ace)
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side ((spiros:3pr spiros:4pr) :label :pr2))
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side spiros:bnz)
-     :dkp spiros::ampross
-     :amide spiros::aminoacid
-     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:sideamide spiros:sideamide-ace)
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side (spiros:bipy :label :bipy))
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side spiros:bnz)
-     :dkp spiros::ampross ((ring :+amide :+ring :ringc))
-     )
-   ))
+(defvar *olig-space* nil)
 
-
-(defun add-restraints-to-energy-function (assembler)
-  (let* ((oligomer (first (topology:oligomers assembler)))
+(defun find-atom (assembler monomer-label atom-name)
+  (let* ((oligomer (first topology:oligomers assembler))
          (oligomer-space (topology:oligomer-space oligomer))
-         (mpy1 (first (gethash :pr1 (topology:labeled-monomers oligomer-space))))
-         (mpy2 (first (gethash :pr2 (topology:labeled-monomers oligomer-space))))
-         (mbipy (first (gethash :bipy (topology:labeled-monomers oligomer-space))))
-         (pos-py1 (gethash mpy1 (topology:monomer-positions assembler)))
-         (pos-py2 (gethash mpy2 (topology:monomer-positions assembler)))
-         (pos-bipy (gethash mbipy (topology:monomer-positions assembler)))
+         (monomer (first (gethash monomer-label (topology:labeled-monomers oligomer-space))))
+         (pos (gethash monomer (topology:monomer-positions assembler)))
          (aggregate (topology:aggregate assembler))
-         (res-py1 (topology:at-position aggregate pos-py1))
-         (res-py2 (topology:at-position aggregate pos-py2))
-         (res-bipy (topology:at-position aggregate pos-bipy))
-         (py1-n (chem:atom-with-name res-py1 :N))
-         (py2-n (chem:atom-with-name res-py2 :N))
-         (bipy-n3 (chem:atom-with-name res-bipy :N3))
-         (bipy-n8 (chem:atom-with-name res-bipy :N8))
-         (energy-function (topology:energy-function assembler))
-         (stretch (chem:energy-function/get-stretch-component energy-function))
-         (atomtable (chem:energy-function/atom-table energy-function))
-         (force 1000.0)
+         (residue (topology:at-position aggregate pos))
+         (atom (chem:atom-with-name residue atom-name))
          )
-    (chem:energy-stretch/add-stretch-term stretch atomtable py1-n py2-n force 2.78)
-    (chem:energy-stretch/add-stretch-term stretch atomtable py1-n bipy-n3 force 2.95)
-    (chem:energy-stretch/add-stretch-term stretch atomtable py2-n bipy-n8 force 2.95)
-    )
-  )
+    atom))
+
+(defgeneric add-restraints-to-energy-function (assembler))
 
 (defclass mc-job (cando.serialize:serializable)
   ((team :initarg :team :accessor team)
    (node :initarg :node :accessor node)
    (oligomer-index :initarg :oligomer-index :accessor oligomer-index))
   )
-
 
 (defun setup (&key (teams 1) (nodes-per-team 12) max-sequences verbose)
   (let* ((number-of-sequences (or max-sequences (topology:number-of-sequences *olig-space*)))
@@ -124,9 +93,10 @@
         (format stream "oligomer-index ~a score: ~f" (oligomer-index obj) (score obj)))))
 
 (defun do-monte-carlo (oligomer-space oligomer-index
-                       &key (num-mc-runs 10)
+                       &key (num-mc-runs *num-mc-runs*)
                          (rotamer-db *rotamer-db*)
                          (verbose nil))
+  (declare (special *rotamer-db*))
   (let* ((olig (topology:make-oligomer oligomer-space oligomer-index))
          (olig-shape (topology:make-oligomer-shape olig rotamer-db))
          (assembler (topology:make-assembler (list olig)))
@@ -163,13 +133,17 @@
 
 
 (defun analyze (&key output)
-  (let* ((files (directory "data/**.output"))
-         (all-data (loop for file in files
-                         append (with-open-file (fin file :direction :input)
-                                  (loop for one = (read fin nil :eof)
-                                        unless (eq one :eof)
-                                          collect one into results
-                                        finally (return results)))))
+  (let* ((files (directory "data/*.output"))
+         (all-data (let ((*readtable* cando.serialize::*cando-reader*))
+                     (loop for file in files
+                           do (progn
+                                (format t "Reading ~s~%" file)
+                                (finish-output t))
+                           append (with-open-file (fin file :direction :input)
+                                    (loop for one = (read fin nil :eof)
+                                          when (eq one :eof)
+                                            do (return results)
+                                          collect one into results)))))
          (sorted (sort all-data #'< :key #'score)))
     (when output
       (with-open-file (fout output :direction :output)
@@ -181,8 +155,9 @@
     sorted
     ))
 
-(defun solution-aggregate (solution &key (rotamer-db *rotamer-db*))
-  (let* ((olig (topology:make-oligomer *olig-space* (oligomer-index solution)))
+(defun solution-aggregate (solution)
+  (let* ((rotamer-db (load-rotamers))
+         (olig (topology:make-oligomer *olig-space* (oligomer-index solution)))
          (olig-shape (topology:make-oligomer-shape olig rotamer-db))
          (assembler (topology:make-assembler (list olig)))
          (coords (topology:make-coordinates-for-assembler assembler))
@@ -191,13 +166,10 @@
     (topology:fill-internals-from-oligomer-shape-and-adjust assembler olig-shape)
     (topology:build-all-atom-tree-external-coordinates-and-adjust assembler coords)
     (topology::copy-joint-positions-into-atoms assembler coords)
-    (topology:aggregate assembler)
-    )
-  )
+    (topology:aggregate assembler)))
 
 (defparameter command nil)
 (defparameter args nil)
-
 
 (defun command-line-dispatch ()
   (let* ((raw-args  (loop for ii below (sys:argc) collect (sys:argv ii)))
