@@ -16,7 +16,7 @@
 (defvar *olig-space* nil)
 
 (defun find-atom (assembler monomer-label atom-name)
-  (let* ((oligomer (first topology:oligomers assembler))
+  (let* ((oligomer (first (topology:oligomers assembler)))
          (oligomer-space (topology:oligomer-space oligomer))
          (monomer (first (gethash monomer-label (topology:labeled-monomers oligomer-space))))
          (pos (gethash monomer (topology:monomer-positions assembler)))
@@ -117,7 +117,7 @@
                       (macrocycle:mopt-backbone olig-shape assembler coords :verbose verbose)
                       (macrocycle:mopt-sidechain olig-shape assembler coords :verbose verbose))
                     (return nil))
-                (restart-monte-carlo ()
+                (macrocycle:restart-monte-carlo ()
                   (format t "WARNING: restart-monte-carlo was invoked~%"))))
           do (let* ((vec (topology:read-rotamers olig-shape))
                     (solution (make-instance 'mc-solution
