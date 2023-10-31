@@ -132,8 +132,8 @@
   )
 
 
-(defun analyze (&key output)
-  (let* ((files (directory "data/*.output"))
+(defun analyze (&key (data "data") output)
+  (let* ((files (directory (format nil "~a/*.output" data)))
          (all-data (let ((*readtable* cando.serialize::*cando-reader*))
                      (loop for file in files
                            do (progn
@@ -167,6 +167,11 @@
     (topology:build-all-atom-tree-external-coordinates-and-adjust assembler coords)
     (topology::copy-joint-positions-into-atoms assembler coords)
     (topology:aggregate assembler)))
+
+(defun solution-sequence (solution)
+  (let* ((olig (topology:make-oligomer *olig-space* (oligomer-index solution)))
+         )
+    (topology::canonical-sequence olig)))
 
 (defparameter command nil)
 (defparameter args nil)
