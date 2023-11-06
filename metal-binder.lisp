@@ -9,6 +9,7 @@
   (unless (boundp '*rotamer-db*)
     (let ((rotamers "~/work/spiros/data/rotamers.cando"))
       (format t "About to load ~s~%" rotamers)
+      (finish-output)
       (time (defvar *rotamer-db* (cando.serialize:load-cando rotamers)))
       (format t "Loaded.~%")))
   *rotamer-db*)

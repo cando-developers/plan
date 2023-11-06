@@ -8,4 +8,5 @@
    #:*olig-space*
    #:add-restraints-to-energy-function
    #:find-atom
-   #:*num-mc-runs*))
+   #:*num-mc-runs*
+   #:load-rotamers))
