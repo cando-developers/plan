@@ -167,7 +167,7 @@
     (topology:write-rotamers olig-shape (rotamers solution))
     (topology:fill-internals-from-oligomer-shape-and-adjust assembler olig-shape)
     (topology:build-all-atom-tree-external-coordinates-and-adjust assembler coords)
-    (topology::copy-joint-positions-into-atoms assembler coords)
+    (topology::copy-all-joint-positions-into-atoms assembler coords)
     (topology:aggregate assembler)))
 
 (defun solution-sequence (solution)
