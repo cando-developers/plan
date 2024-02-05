@@ -112,17 +112,17 @@
           do (loop
               (restart-case
                   (progn
-                    (topology:write-rotamers bs (foldamer:random-rotamers bs))
+                    (topology:write-rotamers oligomer-shape bs (foldamer:random-rotamers bs))
                     (let* ((ss (foldamer:make-permissible-sidechain-rotamers olig-shape))
                            )
-                      (topology:write-rotamers ss (foldamer:random-rotamers ss))
+                      (topology:write-rotamers oligomer-shape ss (foldamer:random-rotamers ss))
                       ;; Restart the mopt 
                       (macrocycle:mopt-backbone olig-shape assembler coords :verbose verbose)
                       (macrocycle:mopt-sidechain olig-shape assembler coords :verbose verbose))
                     (return nil))
                 (macrocycle:restart-monte-carlo ()
                   (format t "WARNING: restart-monte-carlo was invoked~%"))))
-          do (let* ((vec (topology:read-rotamers olig-shape))
+          do (let* ((vec (topology:read-oligomer-shape-rotamers olig-shape))
                     (solution (make-instance 'mc-solution
                                              :oligomer-index oligomer-index
                                              :score (chem:evaluate-energy energy-function coords)
@@ -165,7 +165,7 @@
          (assembler (topology:make-assembler (list olig-shape)))
          (coords (topology:make-coordinates-for-assembler assembler))
          )
-    (topology:write-rotamers olig-shape (rotamers solution))
+    (topology:write-oligomer-shape-rotamers olig-shape (rotamers solution))
     (topology:update-internals assembler olig-shape)
     (topology:build-all-atom-tree-external-coordinates-and-adjust assembler coords)
     (topology::copy-all-joint-positions-into-atoms assembler coords)
