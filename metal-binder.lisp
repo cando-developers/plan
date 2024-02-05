@@ -7,7 +7,8 @@
 (defvar *rotamer-db*)
 (defun load-rotamers ()
   (unless (boundp '*rotamer-db*)
-    (let* ((cando-data (pathname (ext:getenv "CANDO_DATA")))
+    (setf *rotamer-db* (spiros:load-rotamers))
+    #+(or)(let* ((cando-data (pathname (ext:getenv "CANDO_DATA")))
            (rotamers (merge-pathnames #p"spiros/data/rotamers.cando" cando-data)))
       (format t "About to load ~s~%" rotamers)
       (finish-output)
@@ -104,7 +105,7 @@
          (assembler (topology:make-assembler (list olig-shape)))
          (energy-function (topology:energy-function assembler))
          (coords (topology:make-coordinates-for-assembler assembler))
-         (bs (foldamer:make-backbone-rotamer-stepper olig-shape))
+         (bs (foldamer:make-permissible-backbone-rotamers olig-shape))
          (best-solution nil))
     (add-restraints-to-energy-function assembler)
     (loop for mc-index below num-mc-runs
@@ -112,7 +113,7 @@
               (restart-case
                   (progn
                     (topology:write-rotamers bs (foldamer:random-rotamers bs))
-                    (let* ((ss (foldamer:make-sidechain-rotamer-stepper olig-shape))
+                    (let* ((ss (foldamer:make-permissible-sidechain-rotamers olig-shape))
                            )
                       (topology:write-rotamers ss (foldamer:random-rotamers ss))
                       ;; Restart the mopt 
@@ -165,7 +166,7 @@
          (coords (topology:make-coordinates-for-assembler assembler))
          )
     (topology:write-rotamers olig-shape (rotamers solution))
-    (topology:fill-internals-from-oligomer-shape-and-adjust assembler olig-shape)
+    (topology:update-internals assembler olig-shape)
     (topology:build-all-atom-tree-external-coordinates-and-adjust assembler coords)
     (topology::copy-all-joint-positions-into-atoms assembler coords)
     (topology:aggregate assembler)))

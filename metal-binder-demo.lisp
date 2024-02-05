@@ -4,17 +4,17 @@
   (topology:make-oligomer-space
    spiros:*spiros*
    `((spiros:ring-aminoacid :label :ringc)
-     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:sideamide spiros::sideamide-ace)
+     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:amide spiros::ace)
      :dkp ((spiros:pro4ss spiros:pro4rr)) (:side ((spiros:3pr spiros:4pr) :label :pr1))
      :dkp ((spiros:pro4ss spiros:pro4rr)) (:side spiros:bnz)
      :dkp spiros::ampross
      :amide spiros::aminoacid
-     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:sideamide spiros:sideamide-ace)
+     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:amide spiros:ace)
      :dkp ((spiros:pro4ss spiros:pro4rr)) (:side ((spiros:3pr spiros:4pr) :label :pr2))
      :dkp ((spiros:pro4ss spiros:pro4rr)) (:side spiros:bnz)
      :dkp spiros::ampross
      :amide spiros::aminoacid
-     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:sideamide spiros:sideamide-ace)
+     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:amide spiros:ace)
      :dkp ((spiros:pro4ss spiros:pro4rr)) (:side (spiros:bipy :label :bipy))
      :dkp ((spiros:pro4ss spiros:pro4rr)) (:side spiros:bnz)
      :dkp spiros::ampross ((ring :+amide :+ring :ringc))
