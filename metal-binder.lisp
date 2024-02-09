@@ -19,9 +19,10 @@
 (defvar *olig-space* nil)
 
 (defun find-atom (assembler monomer-label atom-name)
-  (let* ((oligomer (first (topology:oligomers assembler)))
+  (let* ((oligomer-shape (first (topology:oligomer-shapes assembler)))
+         (oligomer (topology:oligomer oligomer-shape))
          (oligomer-space (topology:oligomer-space oligomer))
-         (monomer (first (gethash monomer-label (topology:labeled-monomers oligomer-space))))
+         (monomer (gethash monomer-label (topology:labeled-monomers oligomer-space)))
          (pos (gethash monomer (topology:monomer-positions assembler)))
          (aggregate (topology:aggregate assembler))
          (residue (topology:at-position aggregate pos))
@@ -105,17 +106,18 @@
          (assembler (topology:make-assembler (list olig-shape)))
          (energy-function (topology:energy-function assembler))
          (coords (topology:make-coordinates-for-assembler assembler))
-         (bs (foldamer:make-permissible-backbone-rotamers olig-shape))
+         (bs (topology:make-permissible-backbone-rotamers olig-shape))
          (best-solution nil))
     (add-restraints-to-energy-function assembler)
     (loop for mc-index below num-mc-runs
           do (loop
               (restart-case
-                  (progn
-                    (topology:write-rotamers oligomer-shape bs (foldamer:random-rotamers bs))
-                    (let* ((ss (foldamer:make-permissible-sidechain-rotamers olig-shape))
+                  (let ((rr (topology:random-rotamers bs)))
+                    (format t "random-rotamers ~s~%" rr)
+                    (topology:write-rotamers olig-shape bs rr)
+                    (let* ((ss (topology:make-permissible-sidechain-rotamers olig-shape))
                            )
-                      (topology:write-rotamers oligomer-shape ss (foldamer:random-rotamers ss))
+                      (topology:write-rotamers olig-shape ss (topology:random-rotamers ss))
                       ;; Restart the mopt 
                       (macrocycle:mopt-backbone olig-shape assembler coords :verbose verbose)
                       (macrocycle:mopt-sidechain olig-shape assembler coords :verbose verbose))
