@@ -99,31 +99,30 @@
 (defun do-monte-carlo (oligomer-space oligomer-index
                        &key (num-mc-runs *num-mc-runs*)
                          (rotamer-db *rotamer-db*)
-                         (verbose nil))
+                         (verbose t))
   (declare (special *rotamer-db*))
   (let* ((olig (topology:make-oligomer oligomer-space oligomer-index))
          (olig-shape (topology:make-oligomer-shape olig rotamer-db))
          (assembler (topology:make-assembler (list olig-shape)))
          (energy-function (topology:energy-function assembler))
          (coords (topology:make-coordinates-for-assembler assembler))
-         (bs (topology:make-permissible-backbone-rotamers olig-shape))
+         (permissible-backbone-rotamers (topology:make-permissible-backbone-rotamers olig-shape))
          (best-solution nil))
     (add-restraints-to-energy-function assembler)
     (loop for mc-index below num-mc-runs
+          do (format t "mc-index ~a oligomer-index: ~a~%" mc-index oligomer-index)
           do (loop
               (restart-case
-                  (let ((rr (topology:random-rotamers bs)))
-                    (format t "random-rotamers ~s~%" rr)
-                    (topology:write-rotamers olig-shape bs rr)
-                    (let* ((ss (topology:make-permissible-sidechain-rotamers olig-shape))
-                           )
-                      (topology:write-rotamers olig-shape ss (topology:random-rotamers ss))
+                  (let ((rand-rots (topology:random-rotamers permissible-backbone-rotamers)))
+                    (topology:write-rotamers olig-shape permissible-backbone-rotamers rand-rots)
+                    (let* ((permissible-sidechain-rotamers (topology:make-permissible-sidechain-rotamers olig-shape)))
+                      (topology:write-rotamers olig-shape permissible-sidechain-rotamers (topology:random-rotamers permissible-sidechain-rotamers))
                       ;; Restart the mopt 
                       (macrocycle:mopt-backbone olig-shape assembler coords :verbose verbose)
                       (macrocycle:mopt-sidechain olig-shape assembler coords :verbose verbose))
                     (return nil))
                 (macrocycle:restart-monte-carlo ()
-                  (format t "WARNING: restart-monte-carlo was invoked~%"))))
+                  (format t "WARNING: metal-binder.lisp do-monte-carlo restart-monte-carlo was invoked~%"))))
           do (let* ((vec (topology:read-oligomer-shape-rotamers olig-shape))
                     (solution (make-instance 'mc-solution
                                              :oligomer-index oligomer-index
