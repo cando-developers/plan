@@ -1,20 +1,6 @@
 (in-package :metal-binder)
 
-(defvar *force-field* (foldamer:load-force-field t))
-
 (defvar *num-mc-runs* 50)
-
-(defvar *rotamer-db*)
-(defun load-rotamers ()
-  (unless (boundp '*rotamer-db*)
-    (setf *rotamer-db* (spiros:load-rotamers))
-    #+(or)(let* ((cando-data (pathname (ext:getenv "CANDO_DATA")))
-           (rotamers (merge-pathnames #p"spiros/data/rotamers.cando" cando-data)))
-      (format t "About to load ~s~%" rotamers)
-      (finish-output)
-      (time (defvar *rotamer-db* (cando.serialize:load-cando rotamers)))
-      (format t "Loaded.~%")))
-  *rotamer-db*)
 
 (defvar *olig-space* nil)
 
