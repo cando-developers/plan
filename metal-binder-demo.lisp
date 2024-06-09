@@ -17,10 +17,12 @@
      :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:amide spiros:ace)
      :dkp ((spiros:pro4ss spiros:pro4rr)) (:side (spiros:bipy :label :bipy))
      :dkp ((spiros:pro4ss spiros:pro4rr)) (:side spiros:bnz)
-     :dkp spiros::ampross ((ring :+amide :+ring :ringc))
+     :dkp spiros::ampross ((ring :+amide :+rev-amide :ringc))
      )
    ))
 
+
+`((spiros:))
 
 (defmethod metal-binder:add-restraints-to-energy-function (assembler)
   (let* ((py1-n (metal-binder:find-atom assembler :pr1 :N))
