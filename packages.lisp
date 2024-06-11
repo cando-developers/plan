@@ -9,4 +9,5 @@
    #:add-restraints-to-energy-function
    #:find-atom
    #:*num-mc-runs*
-   #:load-rotamers))
+   #:load-rotamers
+   #:do-monte-carlo))

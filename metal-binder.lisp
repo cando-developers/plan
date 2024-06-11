@@ -72,7 +72,8 @@
     ))
 
 (defclass mc-solution (cando.serialize:serializable)
-  ((oligomer-index :initarg :oligomer-index :accessor oligomer-index)
+  ((oligomer-space :initarg :oligomer-space :reader oligomer-space)
+   (oligomer-index :initarg :oligomer-index :accessor oligomer-index)
    (score :initarg :score :accessor score)
    (rotamers :initarg :rotamers :accessor rotamers)))
 
@@ -84,10 +85,9 @@
 
 (defun do-monte-carlo (oligomer-space oligomer-index
                        &key (num-mc-runs *num-mc-runs*)
-                         (rotamer-db *rotamer-db*)
                          (verbose t))
-  (declare (special *rotamer-db*))
   (let* ((olig (topology:make-oligomer oligomer-space oligomer-index))
+         (rotamer-db (topology:foldamer-rotamers-database (topology:foldamer oligomer-space)))
          (olig-shape (topology:make-oligomer-shape olig rotamer-db))
          (assembler (topology:make-assembler (list olig-shape)))
          (energy-function (topology:energy-function assembler))
@@ -96,7 +96,9 @@
          (best-solution nil))
     (add-restraints-to-energy-function assembler)
     (loop for mc-index below num-mc-runs
-          do (format t "mc-index ~a oligomer-index: ~a~%" mc-index oligomer-index)
+          do (when verbose
+               (format t "mc-index ~a oligomer-index: ~a best-solution: ~s~%" mc-index oligomer-index best-solution)
+               (finish-output t))
           do (loop
               (restart-case
                   (let ((rand-rots (topology:random-rotamers permissible-backbone-rotamers)))
@@ -111,6 +113,7 @@
                   (format t "WARNING: metal-binder.lisp do-monte-carlo restart-monte-carlo was invoked~%"))))
           do (let* ((vec (topology:read-oligomer-shape-rotamers olig-shape))
                     (solution (make-instance 'mc-solution
+                                             :oligomer-space oligomer-space
                                              :oligomer-index oligomer-index
                                              :score (chem:evaluate-energy energy-function coords)
                                              :rotamers vec)))
@@ -146,7 +149,9 @@
     ))
 
 (defun solution-aggregate (solution)
-  (let* ((rotamer-db (load-rotamers))
+  (let* ((oligomer-space (oligomer-space solution))
+         (foldamer (topology:foldamer oligomer-space))
+         (rotamer-db (topology:foldamer-rotamers-database foldamer))
          (olig (topology:make-oligomer *olig-space* (oligomer-index solution)))
          (olig-shape (topology:make-oligomer-shape olig rotamer-db))
          (assembler (topology:make-assembler (list olig-shape)))

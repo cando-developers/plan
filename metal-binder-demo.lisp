@@ -1,28 +1,33 @@
 (in-package :metal-binder-demo)
 
+(progn
+  (defparameter bbo '(spiros:pro4ss spiros:pro4rr))
+  (defparameter bbe '(spiros:pre4ss spiros:pre4rr)))
+
+#+(or)
+(progn
+  (defparameter bbo '(spiros:pro4ss))
+  (defparameter bbe '(spiros:pre4ss)))
+
 (setq metal-binder:*olig-space*
-  (topology:make-oligomer-space
-   spiros:*spiros*
-   `((spiros:ring-aminoacid :label :ringc)
-     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:amide spiros::ace)
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side ((spiros:3pr spiros:4pr) :label :pr1))
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side spiros:bnz)
-     :dkp spiros::ampross
-     :amide spiros::aminoacid
-     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:amide spiros:ace)
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side ((spiros:3pr spiros:4pr) :label :pr2))
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side spiros:bnz)
-     :dkp spiros::ampross
-     :amide spiros::aminoacid
-     :amide ((spiros:apro4ss spiros:apro4rr)) (:side spiros:bnz) (:amide spiros:ace)
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side (spiros:bipy :label :bipy))
-     :dkp ((spiros:pro4ss spiros:pro4rr)) (:side spiros:bnz)
-     :dkp spiros::ampross ((ring :+amide :+rev-amide :ringc))
-     )
-   ))
-
-
-`((spiros:))
+      (topology:make-oligomer-space
+       spiros:*spiros*
+       `((spiros:root-adabs :label :ringc)
+         :dkp (,bbo) (:side spiros:bnz)
+         :dkp (,bbo) (:side ((spiros:3pr spiros:4pr) :label :pr1))
+         :dkp (,bbe) (:end spiros:ebnz)
+         :rev-amide spiros:rev-bala
+         :rev-amide spiros:adabs
+         :dkp (,bbo) (:side spiros:bnz)
+         :dkp (,bbo) (:side ((spiros:3pr spiros:4pr) :label :pr2))
+         :dkp (,bbe) (:end spiros:ebnz)
+         :rev-amide spiros:rev-bala
+         :rev-amide spiros:adabs
+         :dkp (,bbo) (:side spiros:bnz)
+         :dkp (,bbo) (:side ((spiros:bipy) :label :bipy))
+         :dkp (,bbe) (:end spiros:ebnz)
+         :rev-amide spiros:rev-bala ((ring :+rev-amide :+amide :ringc))
+       )))
 
 (defmethod metal-binder:add-restraints-to-energy-function (assembler)
   (let* ((py1-n (metal-binder:find-atom assembler :pr1 :N))
