@@ -30,7 +30,7 @@
    (search-index :initarg :search-index :reader search-index)))
 
 (defclass aggregate-task (task:task)
-  ())
+  ((oligomer-space :initarg :oligomer-space :reader oligomer-space)))
 
 (defun build-task-graph (oligomer-space &optional (searches 1))
   (let ((graph (make-instance 'task:task-graph)))
@@ -75,12 +75,16 @@
 
 (defmethod task:execute ((task aggregate-task))
   (let* ((inputs (task:inputs task))
-         (output (first (task:outputs task))))
+         (output (first (task:outputs task)))
+         (oligomer-space (oligomer-space task)))
     (let ((hits (loop for input in inputs
                       for hit = (cando.serialize:load-cando (task:file-pathname input))
                       collect hit)))
-      (let ((sorted-hits (sort hits #'< :key #'score)))
-        (cando.serialize:save-cando sorted-hits (task:file-pathname output))))))
+      (let* ((sorted-hits (sort hits #'< :key #'score))
+             (results (make-instance 'mc-solution-set
+                                     :oligomer-space oligomer-space
+                                     :solutions sorted-hits)))
+        (cando.serialize:save-cando results (task:file-pathname output))))))
 
 
 (defun make-server (&rest args &key (show-remaining-task-limit 100) (log-to-file t) connection-path threaded to-stage endpoint)

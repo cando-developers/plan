@@ -10,4 +10,6 @@
    #:find-atom
    #:*num-mc-runs*
    #:load-rotamers
-   #:do-monte-carlo))
+   #:do-monte-carlo
+   #:make-client
+   #:make-server))

@@ -72,8 +72,7 @@
     ))
 
 (defclass mc-solution (cando.serialize:serializable)
-  ((oligomer-space :initarg :oligomer-space :reader oligomer-space)
-   (oligomer-index :initarg :oligomer-index :accessor oligomer-index)
+  ((oligomer-index :initarg :oligomer-index :accessor oligomer-index)
    (score :initarg :score :accessor score)
    (rotamers :initarg :rotamers :accessor rotamers)))
 
@@ -82,6 +81,10 @@
       (call-next-method)
       (print-unreadable-object (obj stream :type t)
         (format stream "oligomer-index ~a score: ~f" (oligomer-index obj) (score obj)))))
+
+(defclass mc-solution-set (cando.serialize:serializable)
+  ((oligomer-space :initarg :oligomer-space :accessor oligomer-space)
+   (solutions :initarg :solutions :accessor solutions)))
 
 (defun do-monte-carlo (oligomer-space oligomer-index
                        &key (num-mc-runs *num-mc-runs*)
@@ -96,7 +99,7 @@
          (best-solution nil))
     (add-restraints-to-energy-function assembler)
     (loop for mc-index below num-mc-runs
-          do (when verbose
+          do (when (eq verbose :max)
                (format t "mc-index ~a oligomer-index: ~a best-solution: ~s~%" mc-index oligomer-index best-solution)
                (finish-output t))
           do (loop
@@ -106,23 +109,20 @@
                     (let* ((permissible-sidechain-rotamers (topology:make-permissible-sidechain-rotamers olig-shape)))
                       (topology:write-rotamers olig-shape permissible-sidechain-rotamers (topology:random-rotamers permissible-sidechain-rotamers))
                       ;; Restart the mopt 
-                      (macrocycle:mopt-backbone olig-shape assembler coords :verbose verbose)
-                      (macrocycle:mopt-sidechain olig-shape assembler coords :verbose verbose))
+                      (macrocycle:mopt-backbone olig-shape assembler coords :verbose (eq verbose :max))
+                      (macrocycle:mopt-sidechain olig-shape assembler coords :verbose (eq verbose :max)))
                     (return nil))
                 (macrocycle:restart-monte-carlo ()
                   (format t "WARNING: metal-binder.lisp do-monte-carlo restart-monte-carlo was invoked~%"))))
           do (let* ((vec (topology:read-oligomer-shape-rotamers olig-shape))
                     (solution (make-instance 'mc-solution
-                                             :oligomer-space oligomer-space
                                              :oligomer-index oligomer-index
                                              :score (chem:evaluate-energy energy-function coords)
                                              :rotamers vec)))
                (when (or (null best-solution) (< (score solution) (score best-solution)))
                  (when verbose (format t "Found a better solution ~s~%" solution))
                  (setf best-solution solution))))
-    best-solution
-    )
-  )
+    best-solution))
 
 
 (defun analyze (&key (data "data") output)
@@ -145,8 +145,7 @@
                         (*print-pretty* nil))
                    (format fout "~s~%" solution)))
         ))
-    sorted
-    ))
+    sorted))
 
 (defun solution-aggregate (solution)
   (let* ((oligomer-space (oligomer-space solution))
