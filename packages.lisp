@@ -1,6 +1,6 @@
 (cl:in-package #:common-lisp-user)
 
-(defpackage #:metal-binder
+(defpackage #:plan
   (:use #:common-lisp)
   (:export
    #:run
@@ -11,5 +11,9 @@
    #:*num-mc-runs*
    #:load-rotamers
    #:do-monte-carlo
-   #:make-client
-   #:make-server))
+   #:start-client
+   #:start-server
+   #:make-plan
+   #:defscorer
+   #:save-plan
+   #:load-plan))

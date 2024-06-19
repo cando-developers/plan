@@ -1,28 +1,32 @@
-(in-package :metal-binder)
+(in-package :plan)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defclass search-file (task:file)
+(defclass plan-file (task:file)
+  ((plan-name :initarg :plan-name :reader plan-name)))
+
+(defclass search-file (plan-file)
   ((oligomer-index :initarg :oligomer-index :reader oligomer-index)
    (search-index :initarg :search-index :reader search-index)))
 
 (defmethod task:file-pathname ((file search-file))
   (make-pathname :name (format nil "search-~D-~D" (oligomer-index file) (search-index file)) :type "cando"
-                 :directory '(:relative "output")))
+                 :directory (list :relative (string-downcase (plan-name file)))))
 
-
-(defclass hit-file (task:file)
+(defclass hit-file (plan-file)
   ((oligomer-index :initarg :oligomer-index :reader oligomer-index)
    (search-index :initarg :search-index :reader search-index)))
 
 (defmethod task:file-pathname ((file hit-file))
   (make-pathname :name (format nil "hits-~D-~D" (oligomer-index file) (search-index file)) :type "cando"
-                 :directory '(:relative "output")))
+                 :directory (list :relative (string-downcase (plan-name file)))))
 
 
-(defclass aggregate-file (task:file)
+(defclass aggregate-file (plan-file)
   ())
 
 (defmethod task:file-pathname ((file aggregate-file))
-  #P"output/results.cando")
+  (make-pathname :name "results" :type "cando"
+                 :directory (list :relative (string-downcase (plan-name file)))))
 
 (defclass search-task (task:task)
   ((oligomer-space :initarg :oligomer-space :reader oligomer-space)
@@ -32,37 +36,44 @@
 (defclass aggregate-task (task:task)
   ((oligomer-space :initarg :oligomer-space :reader oligomer-space)))
 
-(defun build-task-graph (oligomer-space &optional (searches 1))
-  (let ((graph (make-instance 'task:task-graph)))
-    (loop for oligomer-index below (topology:number-of-sequences oligomer-space)
-          for oligomer = (topology:make-oligomer oligomer-space oligomer-index)
-          do (loop for search-index below searches
-                   for input-file = (task:make-file graph `(search-file
+(defun build-task-graph (plan)
+  (with-accessors ((name name)
+                   (oligomer-space oligomer-space)
+                   (search-count search-count))
+      plan
+    (let ((graph (make-instance 'task:task-graph))
+          ())
+      (loop for oligomer-index below (topology:number-of-sequences oligomer-space)
+            for oligomer = (topology:make-oligomer oligomer-space oligomer-index)
+            do (loop for search-index below search-count
+                     for input-file = (task:make-file graph `(search-file
+                                                              :plan-name ,(name plan)
                                                               :oligomer-index ,oligomer-index
                                                               :search-index ,search-index))
-                   for input-file-pathname = (task:file-pathname input-file)
-                   for output-files = (task:make-files graph `(hit-file
-                                                               :oligomer-index ,oligomer-index
-                                                               :search-index ,search-index))
-                   do (task:ensure-input-file-exists input-file)
-                   do (task:make-task graph 'search-task
-                                              :oligomer-space oligomer-space
-                                              :oligomer-index oligomer-index
-                                              :inputs (list input-file)
-                                              :outputs output-files)))
-    ;; Now a task to aggregate everything
-    (let ((input-files (task:find-files graph :test (lambda (file)
-                                                      (typep file 'hit-file))))
-          (output-file (task:make-file graph `(aggregate-file))))
-      (task:make-task graph 'aggregate-task
-                      :inputs input-files
-                      :outputs (list output-file))
-    graph)))
+                     for input-file-pathname = (task:file-pathname input-file)
+                     for output-files = (task:make-files graph `(hit-file
+                                                                 :plan-name ,(name plan)
+                                                                 :oligomer-index ,oligomer-index
+                                                                 :search-index ,search-index))
+                     do (task:ensure-input-file-exists input-file)
+                     do (task:make-task graph 'search-task
+                                        :oligomer-space oligomer-space
+                                        :oligomer-index oligomer-index
+                                        :inputs (list input-file)
+                                        :outputs output-files)))
+      ;; Now a task to aggregate everything
+      (let ((input-files (task:find-files graph :test (lambda (file)
+                                                        (typep file 'hit-file))))
+            (output-file (task:make-file graph `(aggregate-file
+                                                 :plan-name ,(name plan)))))
+        (task:make-task graph 'aggregate-task
+                        :oligomer-space oligomer-space
+                        :inputs input-files
+                        :outputs (list output-file))
+        graph))))
 
 (defmethod task:execute ((task search-task))
-  (let* ((inputs (task:inputs task))
-         (output (first (task:outputs task)))
-         (search-file (first inputs))
+  (let* ((output (first (task:outputs task)))
          (oligomer-space (oligomer-space task))
          (oligomer-index (oligomer-index task))
          (best-hit (do-monte-carlo oligomer-space oligomer-index :verbose nil)))
@@ -86,11 +97,31 @@
                                      :solutions sorted-hits)))
         (cando.serialize:save-cando results (task:file-pathname output))))))
 
+(defun make-connection-pathname (plan-name)
+  (make-pathname :name "connection" :type "config" :directory (list :relative (string-downcase plan-name))))
 
-(defun make-server (&rest args &key (show-remaining-task-limit 100) (log-to-file t) connection-path threaded to-stage endpoint)
-  (let ((task-graph (build-task-graph metal-binder:*olig-space*)))
-    (apply 'task:make-server task-graph args)))
+(defun start-server (plan-name &rest args &key (show-remaining-task-limit 100) (log-to-file t) threaded to-stage endpoint)
+  (let* ((plan (load-plan plan-name))
+         (task-graph (build-task-graph plan))
+         (connection-path (make-connection-pathname plan-name)))
+    (apply 'task:make-server task-graph :connection-path connection-path args)))
 
-(defun make-client (&rest args &key (log-to-file t) connection-path to-stage threaded dont-execute)
-  (let ((task-graph (build-task-graph metal-binder:*olig-space*)))
-    (apply 'task:make-client task-graph args)))
+(defun define-scoring-method (plan)
+  (let* ((scorer (first (scorers plan)))
+         (args (second scorer))
+         (body (cddr scorer)))
+    (eval `(defmethod plan:add-restraints-to-energy-function ,args ,@body))))
+
+
+(defun start-client (plan-name &rest args &key (log-to-file t) to-stage threaded dont-execute)
+  (let* ((plan (load-plan plan-name))
+         (task-graph (build-task-graph plan))
+         (connection-path (make-connection-pathname plan-name)))
+    (define-scoring-method plan)
+    (apply 'task:make-client task-graph :connection-path connection-path args)))
+
+(defun run (plan-name &rest args)
+  (let* ((plan (load-plan plan-name))
+         (task-graph (build-task-graph plan)))
+    (define-scoring-method plan)
+    (apply 'task:run-tasks task-graph args)))

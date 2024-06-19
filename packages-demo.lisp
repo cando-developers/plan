@@ -1,7 +1,7 @@
 
 (cl:in-package #:common-lisp-user)
 
-(defpackage #:metal-binder-demo
+(defpackage #:plan-demo
   (:use #:common-lisp)
   (:export
    ))

@@ -1,4 +1,4 @@
-(in-package :metal-binder-demo)
+(in-package :plan-demo)
 
 (progn
   (defparameter bbo '(spiros:pro4ss spiros:pro4rr))
@@ -9,7 +9,7 @@
   (defparameter bbo '(spiros:pro4ss))
   (defparameter bbe '(spiros:pre4ss)))
 
-(setq metal-binder:*olig-space*
+(setq plan:*olig-space*
       (topology:make-oligomer-space
        spiros:*spiros*
        `((spiros:root-adabs :label :ringc)
@@ -29,11 +29,11 @@
          :rev-amide spiros:rev-bala ((ring :+rev-amide :+amide :ringc))
        )))
 
-(defmethod metal-binder:add-restraints-to-energy-function (assembler)
-  (let* ((py1-n (metal-binder:find-atom assembler :pr1 :N))
-         (py2-n (metal-binder:find-atom assembler :pr2 :N))
-         (bipy-n3 (metal-binder:find-atom assembler :bipy :N3))
-         (bipy-n8 (metal-binder:find-atom assembler :bipy :N8))
+(defmethod plan:add-restraints-to-energy-function (assembler)
+  (let* ((py1-n (plan:find-atom assembler :pr1 :N))
+         (py2-n (plan:find-atom assembler :pr2 :N))
+         (bipy-n3 (plan:find-atom assembler :bipy :N3))
+         (bipy-n8 (plan:find-atom assembler :bipy :N8))
          (energy-function (topology:energy-function assembler))
          (atomtable (chem:energy-function/atom-table energy-function))
          (stretch (chem:energy-function/get-stretch-component energy-function))

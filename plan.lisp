@@ -1,4 +1,4 @@
-(in-package :metal-binder)
+(in-package :plan)
 
 (defvar *num-mc-runs* 50)
 
@@ -8,8 +8,12 @@
   (let* ((oligomer-shape (first (topology:oligomer-shapes assembler)))
          (oligomer (topology:oligomer oligomer-shape))
          (oligomer-space (topology:oligomer-space oligomer))
-         (monomer (gethash monomer-label (topology:labeled-monomers oligomer-space)))
-         (pos (gethash monomer (topology:monomer-positions assembler)))
+         (monomer (let ((mon (gethash monomer-label (topology:labeled-monomers oligomer-space))))
+                    (unless mon (error "Could not find monomer for label ~s" monomer-label))
+                    mon))
+         (pos (let ((ps (gethash monomer (topology:monomer-positions assembler))))
+                (unless ps (error "Could not find monomer for ~s in monomer-positions of assembler" monomer-label))
+                ps))
          (aggregate (topology:aggregate assembler))
          (residue (topology:at-position aggregate pos))
          (atom (chem:atom-with-name residue atom-name))
@@ -43,7 +47,7 @@
     (loop for team below teams
           do (with-open-file (tfout (format nil "team~a.team" team) :direction :output)
                (loop for node below nodes-per-team
-                     do (format tfout "$CLASP -l run.lisp -e \"(metal-binder:run ~a ~a)\"~%" team node))))
+                     do (format tfout "$CLASP -l run.lisp -e \"(plan:run ~a ~a)\"~%" team node))))
     (ensure-directories-exist "data/jobs.cando")
     (cando.serialize:save-cando jobs "data/jobs.cando")))
 
@@ -113,7 +117,7 @@
                       (macrocycle:mopt-sidechain olig-shape assembler coords :verbose (eq verbose :max)))
                     (return nil))
                 (macrocycle:restart-monte-carlo ()
-                  (format t "WARNING: metal-binder.lisp do-monte-carlo restart-monte-carlo was invoked~%"))))
+                  (format t "WARNING: plan.lisp do-monte-carlo restart-monte-carlo was invoked~%"))))
           do (let* ((vec (topology:read-oligomer-shape-rotamers olig-shape))
                     (solution (make-instance 'mc-solution
                                              :oligomer-index oligomer-index
@@ -192,3 +196,66 @@
     )
   )
 
+
+(defclass plan (cando.serialize:serializable)
+  ((name :initarg :name :reader name)
+   (oligomer-space :initarg :oligomer-space :reader oligomer-space)
+   (scorers :initarg :scorers :reader scorers)
+   (search-count :initarg :search-count :reader search-count)))
+
+(defgeneric make-plan (name oligomer-space scorer &key search-count))
+
+(defmethod make-plan (name oligomer-space scorer &key (search-count 1))
+  (unless (keywordp name)
+    (error "The name must be a keyword symbol"))
+  (make-instance 'plan
+                 :name name
+                 :oligomer-space oligomer-space
+                 :scorers (list scorer)
+                 :search-count search-count))
+
+
+(defmacro defscorer (name args &rest body)
+  `(defparameter ,name '(lambda ,args ,@body)))
+
+(defun plan-pathname (name)
+  (let ((pn (make-pathname :name "plan"
+                           :type "cando"
+                           :directory (list :relative (string-downcase name)))))
+    pn))
+
+
+(defun verify-plan (plan)
+  (let ((old-plan (if (probe-file (plan-pathname (name plan)))
+                                 (cando.serialize:load-cando (plan-pathname (name plan)))
+                                 (return-from verify-plan t))))
+    (format t "Add verification of the oligomer-space~%")
+    ;; If the new number of searches is <= the old then it's good
+    (<= (search-count old-plan)
+        (search-count plan))))
+
+(defun save-plan (plan)
+  (when (verify-plan plan)
+    (let* ((name (name plan))
+           (pn (plan-pathname (name plan))))
+      (ensure-directories-exist pn)
+      (cando.serialize:save-cando plan pn))))
+
+
+(defun load-plan (plan-name)
+  (let ((plan (if (probe-file (plan-pathname plan-name))
+                      (cando.serialize:load-cando (plan-pathname plan-name))
+                      (error "Could not find plan named ~s" plan-name))))
+    plan))
+
+
+(defun load-results (name)
+  (let ((pn (plan-pathname name)))
+    (cando.serialize:load-cando (make-pathname :name "results" :defaults pn))))
+
+(defun best-results (results &optional (number 10))
+  (unless (< number ))
+  (loop for result in (solutions results)
+        for index from 0
+        when (< index number)
+          do (format t "Solution ~3D score: ~10,4f~%" index (score result))))
