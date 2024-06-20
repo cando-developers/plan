@@ -93,6 +93,7 @@
 (defun do-monte-carlo (oligomer-space oligomer-index
                        &key (num-mc-runs *num-mc-runs*)
                          (verbose t))
+  (format t "Starting monte-carlo for oligomer-space ~s oligomer-index ~s~%" oligomer-space oligomer-index)
   (let* ((olig (topology:make-oligomer oligomer-space oligomer-index))
          (rotamer-db (topology:foldamer-rotamers-database (topology:foldamer oligomer-space)))
          (olig-shape (topology:make-oligomer-shape olig rotamer-db))
@@ -103,7 +104,7 @@
          (best-solution nil))
     (add-restraints-to-energy-function assembler)
     (loop for mc-index below num-mc-runs
-          do (when (eq verbose :max)
+          do (when verbose
                (format t "mc-index ~a oligomer-index: ~a best-solution: ~s~%" mc-index oligomer-index best-solution)
                (finish-output t))
           do (loop
@@ -151,7 +152,7 @@
         ))
     sorted))
 
-(defun solution-aggregate (solution)
+(defun result-aggregate (solution)
   (let* ((oligomer-space (oligomer-space solution))
          (foldamer (topology:foldamer oligomer-space))
          (rotamer-db (topology:foldamer-rotamers-database foldamer))
@@ -166,7 +167,7 @@
     (topology::copy-all-joint-positions-into-atoms assembler coords)
     (topology:aggregate assembler)))
 
-(defun solution-sequence (solution)
+(defun result-sequence (solution)
   (let* ((olig (topology:make-oligomer *olig-space* (oligomer-index solution)))
          )
     (topology::canonical-sequence olig)))
@@ -219,9 +220,11 @@
   `(defparameter ,name '(lambda ,args ,@body)))
 
 (defun plan-pathname (name)
-  (let ((pn (make-pathname :name "plan"
-                           :type "cando"
-                           :directory (list :relative (string-downcase name)))))
+  (let ((pn (if name
+                (make-pathname :name "plan"
+                               :type "cando"
+                               :directory (list :relative (string-downcase name)))
+                (make-pathname :name "plan" :type "cando"))))
     pn))
 
 
@@ -236,22 +239,19 @@
 
 (defun save-plan (plan)
   (when (verify-plan plan)
-    (let* ((name (name plan))
-           (pn (plan-pathname (name plan))))
+    (let* ((pn (plan-pathname nil)))
       (ensure-directories-exist pn)
       (cando.serialize:save-cando plan pn))))
 
-
-(defun load-plan (plan-name)
-  (let ((plan (if (probe-file (plan-pathname plan-name))
-                      (cando.serialize:load-cando (plan-pathname plan-name))
-                      (error "Could not find plan named ~s" plan-name))))
+(defun load-plan ()
+  (let ((plan (if (probe-file (plan-pathname nil))
+                      (cando.serialize:load-cando (plan-pathname nil))
+                      (error "Could not find plan named ~s" (plan-pathname nil)))))
     plan))
 
-
-(defun load-results (name)
-  (let ((pn (plan-pathname name)))
-    (cando.serialize:load-cando (make-pathname :name "results" :defaults pn))))
+(defun load-results ()
+  (let ((pn (plan-pathname nil)))
+    (cando.serialize:load-cando (make-pathname :name "results" :type "cando" :directory (list :relative "output")))))
 
 (defun best-results (results &optional (number 10))
   (unless (< number ))

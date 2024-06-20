@@ -10,7 +10,7 @@
 
 (defmethod task:file-pathname ((file search-file))
   (make-pathname :name (format nil "search-~D-~D" (oligomer-index file) (search-index file)) :type "cando"
-                 :directory (list :relative (string-downcase (plan-name file)))))
+                 :directory (list :relative "output")))
 
 (defclass hit-file (plan-file)
   ((oligomer-index :initarg :oligomer-index :reader oligomer-index)
@@ -18,15 +18,14 @@
 
 (defmethod task:file-pathname ((file hit-file))
   (make-pathname :name (format nil "hits-~D-~D" (oligomer-index file) (search-index file)) :type "cando"
-                 :directory (list :relative (string-downcase (plan-name file)))))
-
+                 :directory (list :relative "output")))
 
 (defclass aggregate-file (plan-file)
   ())
 
 (defmethod task:file-pathname ((file aggregate-file))
   (make-pathname :name "results" :type "cando"
-                 :directory (list :relative (string-downcase (plan-name file)))))
+                 :directory (list :relative "output")))
 
 (defclass search-task (task:task)
   ((oligomer-space :initarg :oligomer-space :reader oligomer-space)
@@ -76,9 +75,9 @@
   (let* ((output (first (task:outputs task)))
          (oligomer-space (oligomer-space task))
          (oligomer-index (oligomer-index task))
-         (best-hit (do-monte-carlo oligomer-space oligomer-index :verbose nil)))
+         (best-hit (do-monte-carlo oligomer-space oligomer-index :verbose t)))
     (loop for search below 0
-          for hit = (do-monte-carlo oligomer-space oligomer-index :verbose nil)
+          for hit = (do-monte-carlo oligomer-space oligomer-index :verbose t)
           when (< (score hit) (score best-hit))
             do (setf best-hit hit))
     (cando.serialize:save-cando best-hit (task:file-pathname output))))
@@ -98,12 +97,13 @@
         (cando.serialize:save-cando results (task:file-pathname output))))))
 
 (defun make-connection-pathname (plan-name)
-  (make-pathname :name "connection" :type "config" :directory (list :relative (string-downcase plan-name))))
+  (let ((pn (plan-pathname plan-name)))
+    (make-pathname :name "connection" :type "config" :defaults pn)))
 
-(defun start-server (plan-name &rest args &key (show-remaining-task-limit 100) (log-to-file t) threaded to-stage endpoint)
-  (let* ((plan (load-plan plan-name))
+(defun start-server (&rest args &key (show-remaining-task-limit 100) (log-to-file t) threaded to-stage endpoint)
+  (let* ((plan (load-plan))
          (task-graph (build-task-graph plan))
-         (connection-path (make-connection-pathname plan-name)))
+         (connection-path (make-connection-pathname nil)))
     (apply 'task:make-server task-graph :connection-path connection-path args)))
 
 (defun define-scoring-method (plan)
@@ -113,15 +113,15 @@
     (eval `(defmethod plan:add-restraints-to-energy-function ,args ,@body))))
 
 
-(defun start-client (plan-name &rest args &key (log-to-file t) to-stage threaded dont-execute)
-  (let* ((plan (load-plan plan-name))
+(defun start-client (&rest args &key (log-to-file t) to-stage threaded dont-execute)
+  (let* ((plan (load-plan))
          (task-graph (build-task-graph plan))
-         (connection-path (make-connection-pathname plan-name)))
+         (connection-path (make-connection-pathname nil)))
     (define-scoring-method plan)
     (apply 'task:make-client task-graph :connection-path connection-path args)))
 
-(defun run (plan-name &rest args)
-  (let* ((plan (load-plan plan-name))
+(defun run (&rest args)
+  (let* ((plan (load-plan))
          (task-graph (build-task-graph plan)))
     (define-scoring-method plan)
     (apply 'task:run-tasks task-graph args)))

@@ -16,4 +16,8 @@
    #:make-plan
    #:defscorer
    #:save-plan
-   #:load-plan))
+   #:load-plan
+   #:load-results
+   #:best-results
+   #:result-aggregate
+   #:result-sequence))
