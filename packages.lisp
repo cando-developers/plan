@@ -20,4 +20,5 @@
    #:load-results
    #:best-results
    #:result-aggregate
-   #:result-sequence))
+   #:result-sequence
+   #:result-oligomer))
