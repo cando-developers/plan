@@ -21,4 +21,6 @@
    #:best-results
    #:result-aggregate
    #:result-sequence
-   #:result-oligomer))
+   #:result-oligomer
+   #:status
+   ))

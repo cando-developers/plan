@@ -267,3 +267,16 @@
         for index from 0
         when (< index number)
           do (format t "Solution ~3D score: ~10,4f~%" index (score result))))
+
+(defparameter *status-graph* nil)
+(defun status ()
+  (multiple-value-bind (total-tasks remaining-tasks)
+      (let* ((plan (load-plan))
+             (task-graph (if *status-graph*
+                             *status-graph*
+                             (build-task-graph plan)))
+             (machine (task:make-machine task-graph)))
+        (setf *status-graph task-graph)
+      (if (= remaining-tasks 0)
+          (format t "The computation is done.  The results are ready for inspection.~%")
+          (format t "There are still ~d tasks remaining to be completed out of ~d.~%" remaining-tasks total-tasks)))))
