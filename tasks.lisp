@@ -45,10 +45,10 @@
       (loop for oligomer-index below (topology:number-of-sequences oligomer-space)
             for oligomer = (topology:make-oligomer oligomer-space oligomer-index)
             do (loop for search-index below search-count
-                     for input-file = (task:make-file graph `(search-file
-                                                              :plan-name ,(name plan)
-                                                              :oligomer-index ,oligomer-index
-                                                              :search-index ,search-index))
+                     for input-file = (task:make-file graph 'search-file
+                                                      :plan-name (name plan)
+                                                      :oligomer-index oligomer-index
+                                                      :search-index search-index)
                      for input-file-pathname = (task:file-pathname input-file)
                      for output-files = (task:make-files graph `(hit-file
                                                                  :plan-name ,(name plan)
@@ -63,8 +63,8 @@
       ;; Now a task to aggregate everything
       (let ((input-files (task:find-files graph :test (lambda (file)
                                                         (typep file 'hit-file))))
-            (output-file (task:make-file graph `(aggregate-file
-                                                 :plan-name ,(name plan)))))
+            (output-file (task:make-file graph 'aggregate-file
+                                         :plan-name (name plan))))
         (task:make-task graph 'aggregate-task
                         :oligomer-space oligomer-space
                         :inputs input-files
