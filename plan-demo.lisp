@@ -15,17 +15,17 @@
        `((spiros:root-adabs :label :ringc)
          :dkp (,bbo) (:side spiros:bnz)
          :dkp (,bbo) (:side ((spiros:3pr spiros:4pr) :label :pr1))
-         :dkp (,bbe) (:end spiros:ebnz)
+         :dkp (,bbe) (:eside spiros:ebnz)
          :rev-amide spiros:rev-bala
          :rev-amide spiros:adabs
          :dkp (,bbo) (:side spiros:bnz)
          :dkp (,bbo) (:side ((spiros:3pr spiros:4pr) :label :pr2))
-         :dkp (,bbe) (:end spiros:ebnz)
+         :dkp (,bbe) (:eside spiros:ebnz)
          :rev-amide spiros:rev-bala
          :rev-amide spiros:adabs
          :dkp (,bbo) (:side spiros:bnz)
          :dkp (,bbo) (:side ((spiros:bipy) :label :bipy))
-         :dkp (,bbe) (:end spiros:ebnz)
+         :dkp (,bbe) (:eside spiros:ebnz)
          :rev-amide spiros:rev-bala ((ring :+rev-amide :+amide :ringc))
        )))
 
