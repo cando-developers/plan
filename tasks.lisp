@@ -1,6 +1,9 @@
 (in-package :plan)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defparameter *test* nil)
+
+
 (defclass plan-file (task:file)
   ((plan-name :initarg :plan-name :reader plan-name)))
 
@@ -35,14 +38,15 @@
 (defclass aggregate-task (task:task)
   ((oligomer-space :initarg :oligomer-space :reader oligomer-space)))
 
-(defun build-task-graph (plan)
+(defun build-task-graph (plan &key test)
   (with-accessors ((name name)
                    (oligomer-space oligomer-space)
                    (search-count search-count))
       plan
-    (let ((graph (make-instance 'task:task-graph))
-          ())
-      (loop for oligomer-index below (topology:number-of-sequences oligomer-space)
+    (let ((graph (make-instance 'task:task-graph)))
+      (loop for oligomer-index below (if test
+                                         1
+                                         (topology:number-of-sequences oligomer-space))
             for oligomer = (topology:make-oligomer oligomer-space oligomer-index)
             do (loop for search-index below search-count
                      for input-file = (task:make-file graph 'search-file
@@ -75,7 +79,11 @@
   (let* ((output (first (task:outputs task)))
          (oligomer-space (oligomer-space task))
          (oligomer-index (oligomer-index task))
-         (best-hit (do-monte-carlo oligomer-space oligomer-index :verbose t)))
+         (best-hit (if *test*
+                       (do-monte-carlo oligomer-space oligomer-index :verbose t
+                         :num-mc-runs 1)
+                       (do-monte-carlo oligomer-space oligomer-index :verbose t))))
+    ;; For now only do one search and skip multiple searches
     (loop for search below 0
           for hit = (do-monte-carlo oligomer-space oligomer-index :verbose t)
           when (< (score hit) (score best-hit))
@@ -120,8 +128,9 @@
     (define-scoring-method plan)
     (apply 'task:make-client task-graph :connection-path connection-path args)))
 
-(defun run (&rest args)
-  (let* ((plan (load-plan))
-         (task-graph (build-task-graph plan)))
+(defun run (&rest args &key test)
+  (let* ((*test* test)
+         (plan (load-plan))
+         (task-graph (build-task-graph plan :test test)))
     (define-scoring-method plan)
     (apply 'task:run-tasks task-graph args)))

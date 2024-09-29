@@ -246,10 +246,19 @@
         (search-count plan))))
 
 (defun save-plan (plan)
-  (when (verify-plan plan)
-    (let* ((pn (plan-pathname nil)))
-      (ensure-directories-exist pn)
-      (cando.serialize:save-cando plan pn))))
+  (let* ((pn (plan-pathname nil)))
+    (format t "Will write plan to ~s~%" pn)
+    (finish-output t)
+    (if (verify-plan plan)
+        (progn
+          (format t "Plan was verified~%")
+          (finish-output t)
+          (ensure-directories-exist pn)
+          (cando.serialize:save-cando plan pn))
+        (progn
+          (format t "Plan was damaged - not written~%")
+          (finish-output t))
+          )))
 
 (defun load-plan ()
   (let ((plan (if (probe-file (plan-pathname nil))
