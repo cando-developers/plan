@@ -38,7 +38,8 @@
 (defclass aggregate-task (task:task)
   ((oligomer-space :initarg :oligomer-space :reader oligomer-space)))
 
-(defun build-task-graph (plan &key test)
+(defun build-task-graph (plan stream &key test)
+  (format stream "build-task-graph in plan~%")
   (with-accessors ((name name)
                    (oligomer-space oligomer-space)
                    (search-count search-count))
@@ -110,9 +111,10 @@
 
 (defun start-server (&rest args &key (show-remaining-task-limit 100) (log-to-file t) threaded to-stage endpoint)
   (let* ((plan (load-plan))
-         (task-graph (build-task-graph plan))
+         (task-graph-callback (lambda (stream)
+                                (build-task-graph plan stream)))
          (connection-path (make-connection-pathname nil)))
-    (apply 'task:make-server task-graph :connection-path connection-path args)))
+    (apply 'task:make-server task-graph-callback :connection-path connection-path args)))
 
 (defun define-scoring-method (plan)
   (let* ((scorer (first (scorers plan)))
@@ -123,14 +125,15 @@
 
 (defun start-client (&rest args &key (log-to-file t) to-stage threaded dont-execute)
   (let* ((plan (load-plan))
-         (task-graph (build-task-graph plan))
+         (task-graph-callback (lambda (stream)
+                                (build-task-graph plan stream)))
          (connection-path (make-connection-pathname nil)))
     (define-scoring-method plan)
-    (apply 'task:make-client task-graph :connection-path connection-path args)))
+    (apply 'task:make-client task-graph-callback :connection-path connection-path args)))
 
 (defun run (&rest args &key test)
   (let* ((*test* test)
          (plan (load-plan))
-         (task-graph (build-task-graph plan :test test)))
+         (task-graph-callback (lambda (stream) (build-task-graph plan stream :test test))))
     (define-scoring-method plan)
-    (apply 'task:run-tasks task-graph args)))
+    (apply 'task:run-tasks task-graph-callback args)))
