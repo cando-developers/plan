@@ -207,7 +207,7 @@
 
 
 (defclass plan (cando.serialize:serializable)
-  ((name :initarg :name :reader name)
+  ((name :initform "default" :initarg :name :reader name)
    (oligomer-space :initarg :oligomer-space :reader oligomer-space)
    (scorers :initarg :scorers :reader scorers)
    (search-count :initarg :search-count :reader search-count)))
@@ -215,8 +215,8 @@
 (defgeneric make-plan (name oligomer-space scorer &key search-count))
 
 (defmethod make-plan (name oligomer-space scorer &key (search-count 1))
-  (unless (keywordp name)
-    (error "The name must be a keyword symbol"))
+  (unless (stringp name)
+    (error "The name must be a string"))
   (make-instance 'plan
                  :name name
                  :oligomer-space oligomer-space
@@ -229,10 +229,9 @@
 
 (defun plan-pathname (name)
   (let ((pn (if name
-                (make-pathname :name "plan"
-                               :type "cando"
-                               :directory (list :relative (string-downcase name)))
-                (make-pathname :name "plan" :type "cando"))))
+                (make-pathname :name (string-downcase name)
+                               :type "plan")
+                (make-pathname :name "default" :type "plan"))))
     pn))
 
 
@@ -246,7 +245,7 @@
         (search-count plan))))
 
 (defun save-plan (plan)
-  (let* ((pn (plan-pathname nil)))
+  (let* ((pn (plan-pathname (name plan)))
     (format t "Will write plan to ~s~%" pn)
     (finish-output t)
     (if (verify-plan plan)
@@ -260,15 +259,15 @@
           (finish-output t))
           )))
 
-(defun load-plan ()
-  (let ((plan (if (probe-file (plan-pathname nil))
-                      (cando.serialize:load-cando (plan-pathname nil))
-                      (error "Could not find plan named ~s" (plan-pathname nil)))))
+(defun load-plan (&key name)
+  (let ((plan (if (probe-file (plan-pathname name))
+                      (cando.serialize:load-cando (plan-pathname name))
+                      (error "Could not find plan named ~s" (plan-pathname name)))))
     plan))
 
-(defun load-results ()
-  (let ((pn (plan-pathname nil)))
-    (cando.serialize:load-cando (make-pathname :name "results" :type "cando" :directory (list :relative "output")))))
+(defun load-results (&key name)
+  (let ((pn (plan-pathname name)))
+    (cando.serialize:load-cando (make-pathname :name "results" :type "cando" :directory (list :relative name)))))
 
 (defun best-results (results &optional (number 10))
   (unless (< number ))

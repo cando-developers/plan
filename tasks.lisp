@@ -13,7 +13,7 @@
 
 (defmethod task:file-pathname ((file search-file))
   (make-pathname :name (format nil "search-~D-~D" (oligomer-index file) (search-index file)) :type "cando"
-                 :directory (list :relative "output")))
+                 :directory (list :relative (plan-name file))))
 
 (defclass hit-file (plan-file)
   ((oligomer-index :initarg :oligomer-index :reader oligomer-index)
@@ -21,14 +21,14 @@
 
 (defmethod task:file-pathname ((file hit-file))
   (make-pathname :name (format nil "hits-~D-~D" (oligomer-index file) (search-index file)) :type "cando"
-                 :directory (list :relative "output")))
+                 :directory (list :relative (plan-name file))))
 
 (defclass aggregate-file (plan-file)
   ())
 
 (defmethod task:file-pathname ((file aggregate-file))
   (make-pathname :name "results" :type "cando"
-                 :directory (list :relative "output")))
+                 :directory (list :relative (plan-name file))))
 
 (defclass search-task (task:task)
   ((oligomer-space :initarg :oligomer-space :reader oligomer-space)
