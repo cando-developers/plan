@@ -245,7 +245,7 @@
         (search-count plan))))
 
 (defun save-plan (plan)
-  (let* ((pn (plan-pathname (name plan)))
+  (let* ((pn (plan-pathname (name plan))))
     (format t "Will write plan to ~s~%" pn)
     (finish-output t)
     (if (verify-plan plan)
@@ -257,7 +257,7 @@
         (progn
           (format t "Plan was damaged - not written~%")
           (finish-output t))
-          )))
+        )))
 
 (defun load-plan (&key name)
   (let ((plan (if (probe-file (plan-pathname name))
