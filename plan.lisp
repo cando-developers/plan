@@ -52,7 +52,8 @@
     (cando.serialize:save-cando jobs "data/jobs.cando")))
 
 
-(defun run (team node &key verbose (parallel t))
+(defun run-node (team node &key verbose (parallel t))
+  (error "deprecated")
   (load-rotamers)
   (let* ((print-lock (bordeaux-threads:make-recursive-lock))
          (all-jobs (cando.serialize:load-cando "data/jobs.cando"))

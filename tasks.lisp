@@ -46,7 +46,7 @@
       plan
     (let ((graph (make-instance 'task:task-graph)))
       (loop for oligomer-index below (if test
-                                         1
+                                         (min 2 (topology:number-of-sequences oligomer-space))
                                          (topology:number-of-sequences oligomer-space))
             for oligomer = (topology:make-oligomer oligomer-space oligomer-index)
             do (loop for search-index below search-count
@@ -82,7 +82,7 @@
          (oligomer-index (oligomer-index task))
          (best-hit (if *test*
                        (do-monte-carlo oligomer-space oligomer-index :verbose t
-                         :num-mc-runs 1)
+                         :num-mc-runs 10)
                        (do-monte-carlo oligomer-space oligomer-index :verbose t))))
     ;; For now only do one search and skip multiple searches
     (loop for search below 0
